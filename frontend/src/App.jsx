@@ -13,8 +13,9 @@ import { io } from 'socket.io-client'
 import jsQR from 'jsqr'
 import PixelGame from './PixelGame'
 
-const API_URL = '/api';
-const WS_URL = '/';
+const API_URL = 'https://event-app-backend.onrender.com/api';
+const WS_URL = 'https://event-app-backend.onrender.com/';
+
 
 const pixelButton = 'border-4 border-black bg-[#f7c948] px-4 py-3 font-pixel text-[10px] leading-5 text-black shadow-[4px_4px_0_0_#000] transition active:translate-x-1 active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-50'
 const panel = 'border-4 border-black bg-white p-5 shadow-[6px_6px_0_0_#1f2937]'
@@ -72,21 +73,21 @@ function BackgroundDecorations() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     let raf;
-    const resize = () => { 
-      canvas.width = window.innerWidth; 
-      canvas.height = window.innerHeight; 
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
     window.addEventListener('resize', resize); resize();
-    
+
     // We only use 6 blocks to avoid crowding on mobile screens
-    const tetrisBlocks = Array.from({length: 6}).map((_, i) => ({
+    const tetrisBlocks = Array.from({ length: 6 }).map((_, i) => ({
       lane: i,
       y: Math.random() * -800 - 100,
       type: ['L', 'T', 'S', 'I'][Math.floor(Math.random() * 4)],
       speed: 1.5 + Math.random() * 2,
       color: ['#fca311', '#9b5de5', '#00f5d4', '#00bbf9', '#ff006e', '#fee440'][Math.floor(Math.random() * 6)]
     }));
-    
+
     const dinoFrames = [
       [
         '        RRRRRRR ',
@@ -149,17 +150,17 @@ function BackgroundDecorations() {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    
+
     let last = performance.now();
     const loop = (now) => {
       const dt = Math.min(2, (now - last) / (1000 / 60)); last = now;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       const groundY = canvas.height - 40; // grass bar is 40px at bottom
-      
+
       // Dynamic square size to prevent overlap on small screens
-      const s = Math.min(30, canvas.width / 24); 
-      
+      const s = Math.min(30, canvas.width / 24);
+
       for (const b of tetrisBlocks) {
         b.y += b.speed * dt;
         if (b.y > groundY) { // Reset as soon as the block drops completely below the grass line
@@ -171,16 +172,16 @@ function BackgroundDecorations() {
         ctx.fillStyle = b.color;
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 3;
-        const drawBlock = (x, y) => { ctx.fillRect(bx + x*s, b.y + y*s, s, s); ctx.strokeRect(bx + x*s, b.y + y*s, s, s); };
-        if (b.type === 'L') { drawBlock(0,0); drawBlock(0,1); drawBlock(0,2); drawBlock(1,2); }
-        if (b.type === 'T') { drawBlock(1,0); drawBlock(0,1); drawBlock(1,1); drawBlock(2,1); }
-        if (b.type === 'S') { drawBlock(1,0); drawBlock(2,0); drawBlock(0,1); drawBlock(1,1); }
-        if (b.type === 'I') { drawBlock(0,0); drawBlock(0,1); drawBlock(0,2); drawBlock(0,3); }
+        const drawBlock = (x, y) => { ctx.fillRect(bx + x * s, b.y + y * s, s, s); ctx.strokeRect(bx + x * s, b.y + y * s, s, s); };
+        if (b.type === 'L') { drawBlock(0, 0); drawBlock(0, 1); drawBlock(0, 2); drawBlock(1, 2); }
+        if (b.type === 'T') { drawBlock(1, 0); drawBlock(0, 1); drawBlock(1, 1); drawBlock(2, 1); }
+        if (b.type === 'S') { drawBlock(1, 0); drawBlock(2, 0); drawBlock(0, 1); drawBlock(1, 1); }
+        if (b.type === 'I') { drawBlock(0, 0); drawBlock(0, 1); drawBlock(0, 2); drawBlock(0, 3); }
       }
-      
+
       dinoX += 5 * dt;
       if (dinoX > canvas.width + 100) dinoX = -100;
-      
+
       if (!dinoOnGround) {
         dinoVy += 0.6 * dt;
         dinoY += dinoVy * dt;
@@ -190,7 +191,7 @@ function BackgroundDecorations() {
           dinoOnGround = true;
         }
       }
-      
+
       const px = 4;
       const baseY = groundY - (14 * px); // dino sits on top of the 40px grass
       const drawY = baseY + dinoY;
@@ -201,13 +202,13 @@ function BackgroundDecorations() {
           if (frame[r][c] === 'R') ctx.fillRect(dinoX + c * px, drawY + r * px, px, px);
         }
       }
-      
+
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKeyDown); };
   }, []);
-  
+
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-60" />;
 }
 
@@ -223,7 +224,7 @@ function Home({ setView }) {
       <p className="text-xs text-white drop-shadow-[2px_2px_0_#1f2937]">PLAYER 1 • EVENT MODE</p>
       <h1 className="mt-5 text-3xl leading-[1.7] text-white drop-shadow-[5px_5px_0_#b6302f] sm:text-5xl">EVENT<br />CHECK-IN</h1>
       <div className="mt-9 flex flex-col gap-5 sm:flex-row">
-        <button 
+        <button
           className="border-4 border-black px-6 py-3 font-pixel text-[10px] leading-5 text-white shadow-[4px_4px_0_0_#000] transition active:translate-x-1 active:translate-y-1 active:shadow-none"
           style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%)', boxShadow: '4px 4px 0 0 #1e1b4b' }}
           onClick={() => setView('organizer')}
@@ -236,7 +237,7 @@ function Home({ setView }) {
 
 function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
   const [events, setEvents] = useState([]);
-  
+
   const fetchEvents = () => {
     fetch(`${API_URL}/organizer/events`, { headers: { 'Authorization': `Bearer ${orgToken}` } })
       .then(r => r.json())
@@ -249,8 +250,8 @@ function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
     try {
       const payload = JSON.parse(atob(orgToken.split('.')[1]));
       socket.on(`organizer-${payload.organizerId}-events-updated`, fetchEvents);
-    } catch (e) {}
-    
+    } catch (e) { }
+
     return () => socket.disconnect();
   }, [orgToken]);
 
@@ -259,8 +260,8 @@ function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
     <div className="grid gap-4 md:grid-cols-2">
       {events.map(ev => (
         <div key={ev.id} onClick={() => onSelect(ev)} className={`${orgPanel} cursor-pointer hover:bg-gray-50 transition group border-2 hover:border-gray-400`}>
-           <h3 className="text-sm font-bold text-gray-900 group-hover:text-teal-600">{ev.name.toUpperCase()}</h3>
-           <p className="text-[10px] text-gray-500 mt-2">{ev.date} • {ev.capacity} SPOTS</p>
+          <h3 className="text-sm font-bold text-gray-900 group-hover:text-teal-600">{ev.name.toUpperCase()}</h3>
+          <p className="text-[10px] text-gray-500 mt-2">{ev.date} • {ev.capacity} SPOTS</p>
         </div>
       ))}
       {events.length === 0 && <p className="text-[10px] text-gray-500 col-span-full text-center py-10">NO EVENTS FOUND. CREATE ONE TO GET STARTED.</p>}
@@ -283,7 +284,7 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
     try {
       const res = await fetch(`${API_URL}/events/${event.id}/terminate`, { method: 'POST', headers: { 'Authorization': `Bearer ${orgToken}` } });
       if (res.ok) onBack();
-    } catch(e) {}
+    } catch (e) { }
   };
 
   const startTermination = () => {
@@ -308,7 +309,7 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
 
   useEffect(() => {
     if (!event?.id || !orgToken) return;
-    
+
     fetch(`${API_URL}/events/${event.id}`, { headers: { 'Authorization': `Bearer ${orgToken}` } }).then(r => r.json()).then(data => {
       if (data.stats) setStats(data.stats);
       if (data.attendeesList) setAttendeesList(data.attendeesList);
@@ -330,13 +331,13 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
 
   const exportCsv = async () => {
     try {
-      const res = await fetch(`${API_URL}/events/${event.id}/export`, { headers: { 'Authorization': `Bearer ${orgToken}` }});
+      const res = await fetch(`${API_URL}/events/${event.id}/export`, { headers: { 'Authorization': `Bearer ${orgToken}` } });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'event_export.csv';
       document.body.appendChild(a); a.click(); a.remove();
-    } catch(err) { alert('Failed to export CSV'); }
+    } catch (err) { alert('Failed to export CSV'); }
   }
 
   const [aiFallback, setAiFallback] = useState(null);
@@ -390,7 +391,7 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
         {activeScanners > 0 && <span className="inline-block mt-1 w-2 h-2 rounded-full bg-teal-500 animate-pulse" />}
       </div>
     </div>
-    
+
     <div className="mt-7 grid gap-7 lg:grid-cols-[1fr_1.5fr]">
       <div className="space-y-7">
         <div className={orgPanel}>
@@ -401,8 +402,8 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
             <button className={`${orgButton} bg-teal-600 hover:bg-teal-500`} onClick={onEdit}>EDIT EVENT</button>
             <button className={`${orgButton} bg-gray-600 hover:bg-gray-500`} onClick={exportCsv}>EXPORT DATA (CSV)</button>
             <button className={`${orgButton} bg-white border-2 border-gray-300 !text-gray-700 hover:bg-gray-100`} onClick={onCreate}>CREATE NEW EVENT</button>
-            <button 
-              className={`${orgButton} bg-transparent border-2 border-red-500 !text-red-600 hover:bg-red-500 hover:!text-white transition-all`} 
+            <button
+              className={`${orgButton} bg-transparent border-2 border-red-500 !text-red-600 hover:bg-red-500 hover:!text-white transition-all`}
               onClick={() => setShowTerminateModal(true)}>
               ⚠️ TERMINATE EVENT
             </button>
@@ -448,9 +449,9 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-gray-900 font-bold text-xs">{guest.name.toUpperCase()} <span className="text-gray-500 font-normal">({guest.registration_id})</span></span>
                 {guest.scanned_at ? (
-                   <span className="text-emerald-600 font-bold">✓ SCANNED: {new Date(guest.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-emerald-600 font-bold">✓ SCANNED: {new Date(guest.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 ) : (
-                   <span className="text-amber-600 font-bold">⏳ WAITING AT GATE</span>
+                  <span className="text-amber-600 font-bold">⏳ WAITING AT GATE</span>
                 )}
               </div>
               <p className="text-gray-500">REGISTERED: {new Date(guest.registered_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
@@ -465,31 +466,31 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
 
 function Stat({ label, value }) { return <div className={`${orgPanel} text-center`}><p className="text-3xl text-gray-900 font-medium">{value}</p><p className="mt-2 text-[9px] text-gray-500 font-semibold">{label}</p></div> }
 
-function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) { 
-  const [form, setForm] = useState({ 
-    name: existingEvent?.name || '', 
-    date: existingEvent?.date || '', 
-    end_date: existingEvent?.end_date || '', 
-    duration_hours: existingEvent?.duration_hours || '', 
-    od_start: existingEvent?.od_timings?.split(' - ')[0] || '', 
-    od_end: existingEvent?.od_timings?.split(' - ')[1] || '', 
-    capacity: existingEvent?.capacity || 100, 
-    entry_fee: existingEvent?.entry_fee?.startsWith('Paid') ? 'Paid' : 'Free', 
-    image_url: existingEvent?.image_url || '', 
+function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
+  const [form, setForm] = useState({
+    name: existingEvent?.name || '',
+    date: existingEvent?.date || '',
+    end_date: existingEvent?.end_date || '',
+    duration_hours: existingEvent?.duration_hours || '',
+    od_start: existingEvent?.od_timings?.split(' - ')[0] || '',
+    od_end: existingEvent?.od_timings?.split(' - ')[1] || '',
+    capacity: existingEvent?.capacity || 100,
+    entry_fee: existingEvent?.entry_fee?.startsWith('Paid') ? 'Paid' : 'Free',
+    image_url: existingEvent?.image_url || '',
     details: existingEvent?.details || '',
-    price_tiers: existingEvent?.entry_fee?.startsWith('Paid:') ? 
-      existingEvent.entry_fee.replace('Paid: ', '').split(', ').map(t => { 
-        const m = t.match(/(.+) \(₹(\d+)\)/); return m ? { label: m[1], amount: m[2] } : { label: '1 Person', amount: '' } 
-      }) : [{ label: '1 Person', amount: '' }] 
-  }); 
+    price_tiers: existingEvent?.entry_fee?.startsWith('Paid:') ?
+      existingEvent.entry_fee.replace('Paid: ', '').split(', ').map(t => {
+        const m = t.match(/(.+) \(₹(\d+)\)/); return m ? { label: m[1], amount: m[2] } : { label: '1 Person', amount: '' }
+      }) : [{ label: '1 Person', amount: '' }]
+  });
   const [loading, setLoading] = useState(false);
   const [dateError, setDateError] = useState('');
-  
+
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => setForm({...form, image_url: e.target.result});
+      reader.onload = (e) => setForm({ ...form, image_url: e.target.result });
       reader.readAsDataURL(file);
     }
   }
@@ -513,14 +514,14 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
 
   const odInvalid = form.od_start && form.od_end && form.od_end <= form.od_start;
 
-  const save = async (e) => { 
-    e.preventDefault(); 
+  const save = async (e) => {
+    e.preventDefault();
     if (dateError) return alert(dateError);
     if (form.date && form.end_date && form.end_date < form.date) return alert('End date cannot be before start date');
     if (odInvalid) return alert('OD end time must be after start time');
 
     const od_timings = form.od_start && form.od_end ? `${form.od_start} - ${form.od_end}` : '';
-    
+
     let final_entry_fee = form.entry_fee;
     if (form.entry_fee === 'Paid' && form.price_tiers.length > 0) {
       final_entry_fee = 'Paid: ' + form.price_tiers.map(t => `${t.label} (₹${t.amount})`).join(', ');
@@ -542,20 +543,20 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
       if (res.status === 401 || res.status === 403) throw new Error('Session expired. Please LOGOUT and log back in.');
       if (!res.ok) throw new Error(data.error || `Failed to ${existingEvent ? 'update' : 'create'} event`);
       setEvent(existingEvent ? { ...existingEvent, ...payload } : { id: data.id, ...payload });
-    } catch(err) { 
-      alert(err.message || `Failed to ${existingEvent ? 'update' : 'create'} event`); 
+    } catch (err) {
+      alert(err.message || `Failed to ${existingEvent ? 'update' : 'create'} event`);
     }
     setLoading(false);
-  }; 
+  };
 
   return <OrganizerPage title={existingEvent ? "EDIT EVENT" : "NEW EVENT SETUP"} subtitle={existingEvent ? "UPDATE PARAMETERS" : "DEFINE PARAMETERS"} onBack={onBack}>
     <form onSubmit={save} className={`${orgPanel} mx-auto max-w-xl space-y-5`}>
       <Field label="EVENT NAME" value={form.name} onChange={(name) => setForm({ ...form, name })} />
-      
+
       <label className="block text-[10px] text-slate-400 font-semibold">EVENT DETAILS (Optional)
         <textarea rows={4} value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} className={`${orgInput} resize-none`} placeholder="Write about event details..."></textarea>
       </label>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <label className="block text-[10px] text-slate-400 font-semibold">START DATE
           <input required type="date" value={form.date} max={form.end_date || undefined}
@@ -588,9 +589,9 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
           <p className="text-red-400 text-[10px] mt-1">OD end time must be after start time</p>
         )}
       </div>
-      
+
       <label className="block text-[10px] text-slate-400 font-semibold">ENTRY FEE
-        <select required value={form.entry_fee} onChange={(e) => setForm({...form, entry_fee: e.target.value})} className={orgInput}>
+        <select required value={form.entry_fee} onChange={(e) => setForm({ ...form, entry_fee: e.target.value })} className={orgInput}>
           <option value="Free">Free</option>
           <option value="Paid">Paid</option>
         </select>
@@ -619,7 +620,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
           ))}
         </div>
       )}
-      
+
       <label className="block text-[10px] text-slate-400 font-semibold">EVENT BANNER IMAGE
         <input type="file" accept="image/*" onChange={handleImage} className={`${orgInput} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700`} />
       </label>
@@ -627,7 +628,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
 
       <button disabled={loading || !!dateError || !!odInvalid} className={`${orgButton} mt-3 w-full`}>{loading ? 'SAVING...' : (existingEvent ? 'SAVE CHANGES' : 'CREATE EVENT')}</button>
     </form>
-  </OrganizerPage> 
+  </OrganizerPage>
 }
 function Field({ label, value, onChange, type = 'text', optional = false }) { return <label className="block text-[10px] text-slate-400 font-semibold">{label}<input required={!optional} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={orgInput} /></label> }
 
@@ -643,7 +644,7 @@ function OrganizerLogin({ onLogin, onBack }) {
     try {
       const res = await fetch(`${API_URL}/organizer/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clubName, password }) });
       const data = await res.json();
-      if(res.ok) { onLogin(data.token); } else { setError(data.error); }
+      if (res.ok) { onLogin(data.token); } else { setError(data.error); }
     } catch { setError("Login failed"); }
     setLoading(false);
   }
@@ -652,10 +653,10 @@ function OrganizerLogin({ onLogin, onBack }) {
     <form onSubmit={submit} className={`${orgPanel} mx-auto max-w-sm space-y-5`}>
       {error && <p className="bg-red-500/10 text-red-400 p-3 text-xs text-center rounded-md border border-red-500/20">{error}</p>}
       <label className="block text-[10px] text-slate-400 font-semibold mb-3">CLUB NAME
-        <input required value={clubName} onChange={e=>setClubName(e.target.value)} className={orgInput} />
+        <input required value={clubName} onChange={e => setClubName(e.target.value)} className={orgInput} />
       </label>
       <label className="block text-[10px] text-slate-400 font-semibold mb-3">PASSWORD
-        <input required type="password" value={password} onChange={e=>setPassword(e.target.value)} className={orgInput} />
+        <input required type="password" value={password} onChange={e => setPassword(e.target.value)} className={orgInput} />
       </label>
       <button disabled={loading} className={`${orgButton} w-full mt-2`}>LOGIN</button>
     </form>
@@ -664,13 +665,13 @@ function OrganizerLogin({ onLogin, onBack }) {
 
 function Scanner({ event, onBack, orgToken }) {
   const [code, setCode] = useState(''); const [result, setResult] = useState(null); const [cameraStatus, setCameraStatus] = useState('PRESS START CAMERA'); const video = useRef(null); const stream = useRef(null); const timer = useRef(null)
-  
+
   // Offline queue sync logic
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queueCount, setQueueCount] = useState(0);
   const getQueue = () => JSON.parse(localStorage.getItem('offlineQueue') || '[]');
   const setQueue = (q) => { localStorage.setItem('offlineQueue', JSON.stringify(q)); setQueueCount(q.length); };
-  
+
   // Register this device as an active scanner
   useEffect(() => {
     if (!event?.id) return;
@@ -687,9 +688,9 @@ function Scanner({ event, onBack, orgToken }) {
     setQueueCount(getQueue().length);
     const sync = async () => {
       const q = getQueue();
-      if(q.length === 0) return;
+      if (q.length === 0) return;
       const newQ = [];
-      for(const item of q) {
+      for (const item of q) {
         try {
           const res = await fetch(`${API_URL}/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${orgToken}` }, body: JSON.stringify(item) });
           if (!res.ok && res.status !== 400) newQ.push(item);
@@ -704,7 +705,7 @@ function Scanner({ event, onBack, orgToken }) {
   }, []);
 
   const lastScanned = useRef({});
-  const submitCode = async (value) => { 
+  const submitCode = async (value) => {
     const now = Date.now();
     if (lastScanned.current[value] && now - lastScanned.current[value] < 3000) return; // Debounce
     lastScanned.current[value] = now;
@@ -717,7 +718,7 @@ function Scanner({ event, onBack, orgToken }) {
       const parts = value.split('.');
       if (parts.length !== 3) throw new Error('Invalid JWT format');
       const jwtPayload = JSON.parse(atob(parts[1]));
-      
+
       const scanTime = new Date(payload.scannedAt).getTime() / 1000;
       if (scanTime - jwtPayload.iat > 15) {
         setResult({ ok: false, message: 'EXPIRED QR CODE (Generated > 15s ago)' });
@@ -742,18 +743,18 @@ function Scanner({ event, onBack, orgToken }) {
       setResult({ ok: true, message: 'SAVED OFFLINE' });
     }
   }
-  
+
   const startCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) { setCameraStatus('CAMERA API UNSUPPORTED — USE MANUAL MODE'); return }
-    try { 
-      stream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); 
-      video.current.srcObject = stream.current; 
-      await video.current.play(); 
-      setCameraStatus('SCANNING FOR A QR TICKET...'); 
-      
-      const scan = async () => { 
-        if (!video.current || video.current.readyState < 2) return; 
-        
+    try {
+      stream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.current.srcObject = stream.current;
+      await video.current.play();
+      setCameraStatus('SCANNING FOR A QR TICKET...');
+
+      const scan = async () => {
+        if (!video.current || video.current.readyState < 2) return;
+
         // We exclusively use jsQR for scanning because the native BarcodeDetector API 
         // is notoriously buggy on Windows (it exists in Chrome but returns empty arrays).
         if (jsQR) {
@@ -769,8 +770,8 @@ function Scanner({ event, onBack, orgToken }) {
               const now = Date.now();
               if (!lastScanned.current[code.data] || now - lastScanned.current[code.data] >= 3000) {
                 submitCode(code.data);
-                setCameraStatus('TICKET CAPTURED'); 
-                setTimeout(() => setCameraStatus('SCANNING FOR A QR TICKET...'), 2000); 
+                setCameraStatus('TICKET CAPTURED');
+                setTimeout(() => setCameraStatus('SCANNING FOR A QR TICKET...'), 2000);
               }
             }
           } catch (e) {
@@ -780,16 +781,16 @@ function Scanner({ event, onBack, orgToken }) {
           setCameraStatus('QR SCANNING NOT SUPPORTED BY BROWSER');
           return;
         }
-        
+
         // Throttle scan rate to prevent freezing the UI (approx 10 FPS)
         timer.current = setTimeout(scan, 100);
-      }; 
+      };
       timer.current = setTimeout(scan, 100);
     } catch { setCameraStatus('CAMERA ACCESS DENIED — USE MANUAL MODE') }
   }
   useEffect(() => () => { clearTimeout(timer.current); stream.current?.getTracks().forEach((track) => track.stop()) }, [])
   const submit = (e) => { e.preventDefault(); submitCode(code) }
-  
+
   return <OrganizerPage title="QR SCANNER" subtitle={event?.name || 'NO EVENT'} onBack={onBack}>
     <div className="mx-auto max-w-lg">
       <div className={`mb-4 p-2 text-center text-[10px] font-semibold text-white rounded-sm ${isOnline ? 'bg-green-600' : 'bg-red-500'}`}>
@@ -804,7 +805,7 @@ function Scanner({ event, onBack, orgToken }) {
       </div>
       <button className={`${orgButton} mt-5 w-full bg-blue-600 hover:bg-blue-700`} onClick={startCamera}>START CAMERA</button>
       <p className="mt-4 text-center text-[10px] text-slate-500">{cameraStatus}</p>
-      
+
       <div className="mt-8 border-t border-slate-200 pt-6">
         <h3 className="text-xs font-semibold text-slate-700 mb-3">MANUAL FALLBACK</h3>
         <form onSubmit={submit} className="flex gap-2">
@@ -812,13 +813,12 @@ function Scanner({ event, onBack, orgToken }) {
           <button className={orgButton}>SUBMIT</button>
         </form>
       </div>
-      
+
       {result && (
-        <div className={`mt-5 p-4 text-center text-xs font-bold uppercase rounded-md shadow-sm border ${
-          result.ok ? 'bg-green-50 text-green-700 border-green-200' 
-          : (result.message === 'Already checked in' || result.message.includes('Already')) ? 'bg-orange-50 text-orange-700 border-orange-200'
-          : 'bg-red-50 text-red-700 border-red-200'
-        }`}>
+        <div className={`mt-5 p-4 text-center text-xs font-bold uppercase rounded-md shadow-sm border ${result.ok ? 'bg-green-50 text-green-700 border-green-200'
+            : (result.message === 'Already checked in' || result.message.includes('Already')) ? 'bg-orange-50 text-orange-700 border-orange-200'
+              : 'bg-red-50 text-red-700 border-red-200'
+          }`}>
           {result.message}
         </div>
       )}
@@ -826,7 +826,7 @@ function Scanner({ event, onBack, orgToken }) {
   </OrganizerPage>
 }
 
-function Attendee({ onBack }) { 
+function Attendee({ onBack }) {
   // Global Profile State
   const [profile, setProfile] = useState(() => JSON.parse(localStorage.getItem('my-profile') || 'null'));
   const [name, setName] = useState(profile?.name || '');
@@ -834,7 +834,7 @@ function Attendee({ onBack }) {
 
   const [tickets, setTickets] = useState(() => profile ? JSON.parse(localStorage.getItem(`my-tickets-${profile.registrationId}`) || '{}') : {});
   const [activeTicket, setActiveTicket] = useState(null);
-  
+
   useEffect(() => {
     if (profile) {
       setTickets(JSON.parse(localStorage.getItem(`my-tickets-${profile.registrationId}`) || '{}'));
@@ -848,7 +848,7 @@ function Attendee({ onBack }) {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   // Multi-event selection
   const [availableEvents, setAvailableEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
@@ -875,8 +875,8 @@ function Attendee({ onBack }) {
     try {
       const res = await fetch(`${API_URL}/attendee/${id}/token`);
       const data = await res.json();
-      if(res.ok) { setToken(data.token); setTimeLeft(15); setIsCheckedIn(data.checkedIn); }
-    } catch (err) {}
+      if (res.ok) { setToken(data.token); setTimeLeft(15); setIsCheckedIn(data.checkedIn); }
+    } catch (err) { }
   };
 
   useEffect(() => {
@@ -906,11 +906,11 @@ function Attendee({ onBack }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
+
       const p = { name, registrationId };
       setProfile(p);
       localStorage.setItem('my-profile', JSON.stringify(p));
-    } catch(err) {
+    } catch (err) {
       setProfileError(err.message || "Network Error");
     }
     setProfileLoading(false);
@@ -922,7 +922,7 @@ function Attendee({ onBack }) {
     try {
       const res = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: ev.id, name: profile.name, registrationId: profile.registrationId }) });
       const data = await res.json();
-      if(res.ok) {
+      if (res.ok) {
         const newTickets = { ...tickets, [ev.id]: data.id };
         setTickets(newTickets);
         localStorage.setItem(`my-tickets-${profile.registrationId}`, JSON.stringify(newTickets));
@@ -931,7 +931,7 @@ function Attendee({ onBack }) {
       } else {
         setErrorMsg(data.error || 'REGISTRATION FAILED');
       }
-    } catch(err) { setErrorMsg("NETWORK ERROR"); }
+    } catch (err) { setErrorMsg("NETWORK ERROR"); }
     setLoading(false);
   }
 
@@ -963,7 +963,7 @@ function Attendee({ onBack }) {
     return <main className="min-h-screen bg-[#5cc7f2] px-4 py-8 font-pixel relative overflow-hidden">
       <PixelGame />
       <div className="mx-auto max-w-xl relative z-10 pt-24">
-        
+
         {/* STUDENT PROFILE HEADER */}
         {!viewingEvent && (
           <div className="mb-6 flex items-center justify-between bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#000]">
@@ -980,91 +980,91 @@ function Attendee({ onBack }) {
             ← BACK TO QUESTS
           </button>
         )}
-        
+
         <header className="mb-8 text-center text-white drop-shadow-[3px_3px_0_#b6302f]">
           <h1 className="text-xl leading-9 sm:text-3xl">{viewingEvent ? 'QUEST DETAILS' : 'SELECT QUEST'}</h1>
         </header>
         {fetchingEvents ? (
-           <p className="text-center text-white text-xs animate-pulse">LOADING EVENTS...</p>
+          <p className="text-center text-white text-xs animate-pulse">LOADING EVENTS...</p>
         ) : availableEvents.length === 0 ? (
-           <div className="border-4 border-black bg-[#e7513b] p-8 text-center shadow-[6px_6px_0_0_#000]">
-             <p className="text-2xl text-white">NO EVENTS FOR NOW</p>
-           </div>
+          <div className="border-4 border-black bg-[#e7513b] p-8 text-center shadow-[6px_6px_0_0_#000]">
+            <p className="text-2xl text-white">NO EVENTS FOR NOW</p>
+          </div>
         ) : viewingEvent ? (
-           <div className="border-4 border-black bg-white p-5 shadow-[6px_6px_0_0_#000]">
-             <div className="flex flex-col md:flex-row gap-6 mb-6">
-               {viewingEvent.image_url && (
-                 <div className="w-full md:w-1/2 shrink-0">
-                   <img src={viewingEvent.image_url} className="w-full h-full object-cover border-4 border-black" alt="Banner" />
-                 </div>
-               )}
-               <div className="flex-1 flex flex-col">
-                 <div className="flex justify-between items-start mb-4 gap-2">
-                   <h2 className="text-lg font-bold text-black break-words leading-6">{viewingEvent.name.toUpperCase()}</h2>
-                   <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${viewingEvent.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{viewingEvent.entry_fee ? viewingEvent.entry_fee.toUpperCase() : 'FREE'}</span>
-                 </div>
-                 <div className="text-[10px] text-slate-700 space-y-3 font-semibold flex-1">
-                   <p>📅 {viewingEvent.date} {viewingEvent.end_date ? `TO ${viewingEvent.end_date}` : ''}</p>
-                   {viewingEvent.duration_hours && <p>⏱ {viewingEvent.duration_hours} HOURS</p>}
-                   {viewingEvent.od_timings && <p>📋 OD: {viewingEvent.od_timings}</p>}
-                   {viewingEvent.details && (
-                     <div className="mt-4 text-xs font-sans text-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto pr-2">
-                       {viewingEvent.details}
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-             <div className="flex gap-4">
-               <button disabled={loading} onClick={() => setViewingEvent(null)} className={`${pixelButton} flex-1 bg-slate-200 hover:bg-slate-300 text-black`}>CANCEL</button>
-               <button disabled={loading || viewingEvent.spotsLeft <= 0} onClick={() => register(viewingEvent)} className={`${pixelButton} flex-1 ${viewingEvent.spotsLeft <= 0 ? 'bg-slate-400 cursor-not-allowed text-slate-200' : 'bg-[#54a946] text-white hover:bg-[#438a37]'}`}>
-                 {loading ? 'WAIT...' : viewingEvent.spotsLeft <= 0 ? 'REGISTRATION FULL' : 'ACCEPT QUEST'}
-               </button>
-             </div>
-           </div>
+          <div className="border-4 border-black bg-white p-5 shadow-[6px_6px_0_0_#000]">
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+              {viewingEvent.image_url && (
+                <div className="w-full md:w-1/2 shrink-0">
+                  <img src={viewingEvent.image_url} className="w-full h-full object-cover border-4 border-black" alt="Banner" />
+                </div>
+              )}
+              <div className="flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-4 gap-2">
+                  <h2 className="text-lg font-bold text-black break-words leading-6">{viewingEvent.name.toUpperCase()}</h2>
+                  <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${viewingEvent.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{viewingEvent.entry_fee ? viewingEvent.entry_fee.toUpperCase() : 'FREE'}</span>
+                </div>
+                <div className="text-[10px] text-slate-700 space-y-3 font-semibold flex-1">
+                  <p>📅 {viewingEvent.date} {viewingEvent.end_date ? `TO ${viewingEvent.end_date}` : ''}</p>
+                  {viewingEvent.duration_hours && <p>⏱ {viewingEvent.duration_hours} HOURS</p>}
+                  {viewingEvent.od_timings && <p>📋 OD: {viewingEvent.od_timings}</p>}
+                  {viewingEvent.details && (
+                    <div className="mt-4 text-xs font-sans text-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto pr-2">
+                      {viewingEvent.details}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <button disabled={loading} onClick={() => setViewingEvent(null)} className={`${pixelButton} flex-1 bg-slate-200 hover:bg-slate-300 text-black`}>CANCEL</button>
+              <button disabled={loading || viewingEvent.spotsLeft <= 0} onClick={() => register(viewingEvent)} className={`${pixelButton} flex-1 ${viewingEvent.spotsLeft <= 0 ? 'bg-slate-400 cursor-not-allowed text-slate-200' : 'bg-[#54a946] text-white hover:bg-[#438a37]'}`}>
+                {loading ? 'WAIT...' : viewingEvent.spotsLeft <= 0 ? 'REGISTRATION FULL' : 'ACCEPT QUEST'}
+              </button>
+            </div>
+          </div>
         ) : (
-           <div className="flex flex-col gap-4">
-             {errorMsg && <div className="bg-[#e7513b] text-white p-3 text-[10px] text-center border-2 border-black">{errorMsg}</div>}
-             {availableEvents.map(ev => (
-               <button disabled={loading} key={ev.id} onClick={() => tickets[ev.id] ? setActiveTicket(tickets[ev.id]) : setViewingEvent(ev)} className="w-full border-4 border-black bg-white text-left shadow-[6px_6px_0_0_#000] hover:bg-slate-50 transition active:translate-y-1 active:shadow-none overflow-hidden flex flex-col p-4">
-                 <div className="flex justify-between items-start mb-3 gap-2">
-                   <p className="text-sm font-bold text-black break-words leading-5">{ev.name.toUpperCase()}</p>
-                   <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${ev.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{ev.entry_fee ? ev.entry_fee.toUpperCase() : 'FREE'}</span>
-                 </div>
-                 <div className="text-[10px] text-slate-700 space-y-2 mb-5 font-semibold">
-                   <p>📅 {ev.date} {ev.end_date ? `TO ${ev.end_date}` : ''}</p>
-                 </div>
-                 <div className="flex justify-between items-center text-[10px] border-t-2 border-dashed border-slate-300 pt-3">
-                   <span className="text-blue-600 font-bold underline">{tickets[ev.id] ? 'VIEW TICKET' : 'VIEW DETAILS'}</span>
-                   <span className={ev.spotsLeft <= 0 ? 'text-[#e7513b] font-bold' : 'text-[#54a946] font-bold'}>SPOTS LEFT: {ev.spotsLeft}</span>
-                 </div>
-               </button>
-             ))}
-             
-             {pastEvents.length > 0 && (
-               <div className="mt-8">
-                 <h2 className="text-center text-white drop-shadow-[2px_2px_0_#b6302f] font-bold text-lg mb-4">PAST EVENTS (REPORT)</h2>
-                 <div className="flex flex-col gap-4">
-                   {pastEvents.map(ev => (
-                     <div key={ev.id} className="w-full border-4 border-black bg-slate-200 opacity-90 text-left overflow-hidden flex flex-col p-4 shadow-[inset_2px_2px_0_0_#000]">
-                       <div className="flex justify-between items-start mb-2 gap-2">
-                         <p className="text-xs font-bold text-slate-800 break-words">{ev.name.toUpperCase()}</p>
-                         <span className="text-[9px] px-2 py-1 font-bold shrink-0 bg-slate-700 text-white border-2 border-slate-900">TERMINATED</span>
-                       </div>
-                       <p className="text-[9px] text-slate-600 font-semibold mb-3">📅 {ev.date}</p>
-                       <div className="text-[10px] font-bold border-t-2 border-dashed border-slate-400 pt-2">
-                         {ev.scanned_at ? (
-                           <span className="text-[#3d8137]">✓ ATTENDED</span>
-                         ) : (
-                           <span className="text-[#b6302f]">✗ MISSED</span>
-                         )}
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-             )}
-           </div>
+          <div className="flex flex-col gap-4">
+            {errorMsg && <div className="bg-[#e7513b] text-white p-3 text-[10px] text-center border-2 border-black">{errorMsg}</div>}
+            {availableEvents.map(ev => (
+              <button disabled={loading} key={ev.id} onClick={() => tickets[ev.id] ? setActiveTicket(tickets[ev.id]) : setViewingEvent(ev)} className="w-full border-4 border-black bg-white text-left shadow-[6px_6px_0_0_#000] hover:bg-slate-50 transition active:translate-y-1 active:shadow-none overflow-hidden flex flex-col p-4">
+                <div className="flex justify-between items-start mb-3 gap-2">
+                  <p className="text-sm font-bold text-black break-words leading-5">{ev.name.toUpperCase()}</p>
+                  <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${ev.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{ev.entry_fee ? ev.entry_fee.toUpperCase() : 'FREE'}</span>
+                </div>
+                <div className="text-[10px] text-slate-700 space-y-2 mb-5 font-semibold">
+                  <p>📅 {ev.date} {ev.end_date ? `TO ${ev.end_date}` : ''}</p>
+                </div>
+                <div className="flex justify-between items-center text-[10px] border-t-2 border-dashed border-slate-300 pt-3">
+                  <span className="text-blue-600 font-bold underline">{tickets[ev.id] ? 'VIEW TICKET' : 'VIEW DETAILS'}</span>
+                  <span className={ev.spotsLeft <= 0 ? 'text-[#e7513b] font-bold' : 'text-[#54a946] font-bold'}>SPOTS LEFT: {ev.spotsLeft}</span>
+                </div>
+              </button>
+            ))}
+
+            {pastEvents.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-center text-white drop-shadow-[2px_2px_0_#b6302f] font-bold text-lg mb-4">PAST EVENTS (REPORT)</h2>
+                <div className="flex flex-col gap-4">
+                  {pastEvents.map(ev => (
+                    <div key={ev.id} className="w-full border-4 border-black bg-slate-200 opacity-90 text-left overflow-hidden flex flex-col p-4 shadow-[inset_2px_2px_0_0_#000]">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <p className="text-xs font-bold text-slate-800 break-words">{ev.name.toUpperCase()}</p>
+                        <span className="text-[9px] px-2 py-1 font-bold shrink-0 bg-slate-700 text-white border-2 border-slate-900">TERMINATED</span>
+                      </div>
+                      <p className="text-[9px] text-slate-600 font-semibold mb-3">📅 {ev.date}</p>
+                      <div className="text-[10px] font-bold border-t-2 border-dashed border-slate-400 pt-2">
+                        {ev.scanned_at ? (
+                          <span className="text-[#3d8137]">✓ ATTENDED</span>
+                        ) : (
+                          <span className="text-[#b6302f]">✗ MISSED</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </main>
@@ -1081,7 +1081,7 @@ function Attendee({ onBack }) {
         <h1 className="text-xl leading-9 sm:text-3xl">MY POWER-UP</h1>
         <p className="mt-4 text-[9px] leading-5">TICKET ASSIGNED</p>
       </header>
-      
+
       <div className="flex flex-col md:flex-row gap-5">
         <div className={`${panel} text-black flex-1 h-fit`}>
           <div className="border-4 border-black bg-white p-5 text-left shadow-[6px_6px_0_0_#000]">
@@ -1122,30 +1122,30 @@ function Attendee({ onBack }) {
               <div className="mx-auto my-5 flex items-center justify-center border-4 border-black bg-[#f5f0df] w-48 h-48 shadow-[inset_4px_4px_0_0_#c7b98d]">
                 {token ? (
                   <div className="bg-white p-2 border-2 border-dashed border-black">
-                     <QRCodeSVG value={token} size={140} level="M" />
+                    <QRCodeSVG value={token} size={140} level="M" />
                   </div>
                 ) : (
                   <div className="w-[140px] h-[140px] animate-pulse bg-[#c7b98d]" />
                 )}
               </div>
             )}
-            
+
             {isCheckedIn ? (
-               <p className="text-[12px] leading-6 text-[#248a3d] animate-pulse font-bold">✨ ACCESS GRANTED! ✨</p>
+              <p className="text-[12px] leading-6 text-[#248a3d] animate-pulse font-bold">✨ ACCESS GRANTED! ✨</p>
             ) : (
-               <p className="text-[10px] leading-6 text-slate-700">STATUS: WAITING AT GATES...</p>
+              <p className="text-[10px] leading-6 text-slate-700">STATUS: WAITING AT GATES...</p>
             )}
             {!isCheckedIn && <p className="mt-3 text-[8px] leading-5 text-black font-bold">REFRESHES IN: 00:{timeLeft.toString().padStart(2, '0')}</p>}
           </div>
         </div>
       </div>
     </div>
-  </main> 
+  </main>
 }
 
 function Page({ title, subtitle, onBack, children }) { return <main className="min-h-screen bg-[#5cc7f2] px-4 py-8 font-pixel"><div className="mx-auto max-w-5xl"><button onClick={onBack} className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 text-[10px] text-white font-bold bg-black/40 px-3 py-2 border-2 border-black shadow-[2px_2px_0_0_#000] hover:bg-black/60 transition-colors hover:-translate-y-0.5">← EXIT LEVEL</button><header className="mb-8 text-center text-white drop-shadow-[3px_3px_0_#b6302f] mt-12"><h1 className="text-xl leading-9 sm:text-3xl">{title}</h1><p className="mt-4 text-[9px] leading-5">{subtitle.toUpperCase()}</p></header>{children}</div></main> }
 
-function OrganizerPage({ title, subtitle, onBack, onLogout, children }) { 
+function OrganizerPage({ title, subtitle, onBack, onLogout, children }) {
   return (
     <main className="min-h-screen bg-gray-100 px-4 py-8 font-pixel text-gray-900">
       <div className="mx-auto max-w-5xl">
