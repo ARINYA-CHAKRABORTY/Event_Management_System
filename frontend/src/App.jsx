@@ -13,8 +13,8 @@ import { io } from 'socket.io-client'
 import jsQR from 'jsqr'
 import PixelGame from './PixelGame'
 
-const API_URL = 'https://event-app-backend.onrender.com/api';
-const WS_URL = 'https://event-app-backend.onrender.com/';
+const API_URL = 'https://event-management-system-k2xm.onrender.com/api';
+const WS_URL = 'https://event-management-system-k2xm.onrender.com/';
 
 
 const pixelButton = 'border-4 border-black bg-[#f7c948] px-4 py-3 font-pixel text-[10px] leading-5 text-black shadow-[4px_4px_0_0_#000] transition active:translate-x-1 active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-50'
