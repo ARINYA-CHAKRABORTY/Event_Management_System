@@ -10,6 +10,39 @@ const characterPixels = [
 export default function PixelGame() {
   const canvasRef = useRef(null)
   const shadowCanvasRef = useRef(null)
+  const audioCtx = useRef(null)
+
+  // Lazily create audio context on first user interaction (browser policy)
+  const getAudio = () => {
+    if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)()
+    return audioCtx.current
+  }
+
+  const playSound = (type) => {
+    try {
+      const ac = getAudio()
+      const o = ac.createOscillator()
+      const g = ac.createGain()
+      o.connect(g); g.connect(ac.destination)
+      if (type === 'jump') {
+        o.type = 'square'; o.frequency.setValueAtTime(300, ac.currentTime); o.frequency.linearRampToValueAtTime(600, ac.currentTime + 0.08)
+        g.gain.setValueAtTime(0.15, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.12)
+        o.start(); o.stop(ac.currentTime + 0.12)
+      } else if (type === 'coin') {
+        o.type = 'square'; o.frequency.setValueAtTime(880, ac.currentTime); o.frequency.setValueAtTime(1320, ac.currentTime + 0.07)
+        g.gain.setValueAtTime(0.15, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.18)
+        o.start(); o.stop(ac.currentTime + 0.18)
+      } else if (type === 'stomp') {
+        o.type = 'square'; o.frequency.setValueAtTime(220, ac.currentTime); o.frequency.linearRampToValueAtTime(80, ac.currentTime + 0.1)
+        g.gain.setValueAtTime(0.2, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.12)
+        o.start(); o.stop(ac.currentTime + 0.12)
+      } else if (type === 'gameover') {
+        o.type = 'square'; o.frequency.setValueAtTime(440, ac.currentTime); o.frequency.linearRampToValueAtTime(110, ac.currentTime + 0.6)
+        g.gain.setValueAtTime(0.2, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.65)
+        o.start(); o.stop(ac.currentTime + 0.65)
+      }
+    } catch (e) { /* Audio not available, fail silently */ }
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -91,7 +124,7 @@ export default function PixelGame() {
       const p = game.player, speed = 7 * dt, left = keys.ArrowLeft, right = keys.ArrowRight
       if (right) { p.vx = speed; p.facingLeft = false } else if (left) { p.vx = -speed; p.facingLeft = true } else p.vx = 0
       p.coyote = p.onGround ? 7 : Math.max(0, p.coyote - dt)
-      if (jumpQueued && p.coyote > 0) { p.vy = -13; p.onGround = false; p.coyote = 0 }
+      if (jumpQueued && p.coyote > 0) { p.vy = -13; p.onGround = false; p.coyote = 0; playSound('jump') }
       jumpQueued = false
       if (!keys.Space && !keys.ArrowUp && p.vy < -4) p.vy += .8 * dt
       p.vy = Math.min(p.vy + .5 * dt, 14)
@@ -111,7 +144,7 @@ export default function PixelGame() {
         }
       }
       for (const block of game.blocks) block.bump = Math.max(0, block.bump - dt)
-      for (const coin of game.coins) if (!coin.taken) { coin.bob += .18 * dt; if (hit(p, coin)) { coin.taken = true; game.score++; setSize(p) } }
+      for (const coin of game.coins) if (!coin.taken) { coin.bob += .18 * dt; if (hit(p, coin)) { coin.taken = true; game.score++; setSize(p); playSound('coin') } }
 
       for (const enemy of game.enemies) {
         if (enemy.dead) { enemy.dead -= dt; continue }
@@ -129,13 +162,15 @@ export default function PixelGame() {
               p.y = enemy.y - p.h + 8;
               game.score += 2;
               setSize(p);
+              playSound('stomp');
           }
           else {
               game.gameOver = true;
+              playSound('gameover');
           }
         }
       }
-      if (p.y > canvas.height + 80) game.gameOver = true
+      if (p.y > canvas.height + 80) { if (!game.gameOver) { game.gameOver = true; playSound('gameover'); } }
       game.cameraX = Math.max(game.cameraX, p.x - canvas.width / 2 + p.w / 2);
       if (p.x < game.cameraX) { p.x = game.cameraX; if (p.vx < 0) p.vx = 0; }
       makeWorld(game.cameraX + canvas.width * 2)
@@ -199,7 +234,7 @@ export default function PixelGame() {
   return (
     <>
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-      <canvas ref={shadowCanvasRef} className="fixed inset-0 z-20 pointer-events-none opacity-20 mix-blend-multiply" />
+      <canvas ref={shadowCanvasRef} className="fixed inset-0 z-20 pointer-events-none opacity-20 mix-blend-multiply hidden sm:block" />
     </>
   )
 }

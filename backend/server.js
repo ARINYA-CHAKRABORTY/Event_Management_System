@@ -39,6 +39,9 @@ const requireOrganizer = (req, res, next) => {
   }
 };
 
+// Health check — used by cron-job.org to keep Render server alive
+app.get('/api', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+
 // Login Organizer
 app.post('/api/organizer/login', (req, res) => {
   const { clubName, password } = req.body;
@@ -201,6 +204,21 @@ app.get('/api/events/past/:registrationId', (req, res) => {
     ORDER BY e.id DESC
   `).all(regId);
   res.json(pastEvents);
+});
+
+// Get all active registrations for a student (cross-device ticket sync)
+app.get('/api/attendee/registrations/:registrationId', (req, res) => {
+  const regId = req.params.registrationId.trim().toUpperCase();
+  const registrations = db.prepare(`
+    SELECT a.id as attendee_id, a.event_id
+    FROM attendees a
+    JOIN events e ON a.event_id = e.id
+    WHERE UPPER(a.registration_id) = ? AND e.status = 'active'
+  `).all(regId);
+  // Return as { eventId: attendeeId } map
+  const ticketMap = {};
+  for (const r of registrations) ticketMap[r.event_id] = r.attendee_id;
+  res.json(ticketMap);
 });
 
 const registerTransaction = db.transaction((eventId, name, registrationId, baseToken) => {

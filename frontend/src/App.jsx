@@ -28,6 +28,7 @@ function App() {
   const [view, setView] = useState('home')
   const [event, setEvent] = useState(() => JSON.parse(localStorage.getItem('current-event') || 'null'))
   const [orgToken, setOrgToken] = useState(() => localStorage.getItem('org-token') || '')
+  const [clubName, setClubName] = useState(() => localStorage.getItem('org-club-name') || '')
 
   useEffect(() => {
     try {
@@ -41,14 +42,18 @@ function App() {
     }
   }, [event])
 
-  const handleOrgAuth = (token) => {
+  const handleOrgAuth = (token, name) => {
     setOrgToken(token);
+    setClubName(name || '');
     localStorage.setItem('org-token', token);
+    if (name) localStorage.setItem('org-club-name', name);
   }
 
   const handleOrgLogout = () => {
     setOrgToken('');
+    setClubName('');
     localStorage.removeItem('org-token');
+    localStorage.removeItem('org-club-name');
     localStorage.removeItem('current-event');
     setEvent(null);
     setView('home');
@@ -58,10 +63,10 @@ function App() {
   if (view === 'edit') return <CreateEvent existingEvent={event} setEvent={(e) => { setEvent(e); setView('dashboard'); }} onBack={() => setView('dashboard')} orgToken={orgToken} />
   if (view === 'organizer') {
     if (!orgToken) return <OrganizerLogin onLogin={handleOrgAuth} onBack={() => setView('home')} />
-    return <EventList onSelect={(e) => { setEvent(e); setView('dashboard'); }} onCreate={() => setView('create')} onLogout={handleOrgLogout} onBack={() => setView('home')} orgToken={orgToken} />
+    return <EventList onSelect={(e) => { setEvent(e); setView('dashboard'); }} onCreate={() => setView('create')} onLogout={handleOrgLogout} onBack={() => setView('home')} orgToken={orgToken} clubName={clubName} />
   }
-  if (view === 'dashboard') return <Dashboard event={event} onBack={() => setView('organizer')} onCreate={() => setView('create')} onEdit={() => setView('edit')} onScanner={() => setView('scanner')} orgToken={orgToken} onLogout={handleOrgLogout} />
-  if (view === 'scanner') return <Scanner event={event} onBack={() => setView('dashboard')} orgToken={orgToken} />
+  if (view === 'dashboard') return <Dashboard event={event} onBack={() => setView('organizer')} onCreate={() => setView('create')} onEdit={() => setView('edit')} onScanner={() => setView('scanner')} orgToken={orgToken} onLogout={handleOrgLogout} clubName={clubName} />
+  if (view === 'scanner') return <Scanner event={event} onBack={() => setView('dashboard')} orgToken={orgToken} clubName={clubName} />
   if (view === 'ticket') return <Attendee onBack={() => setView('home')} />
   return <Home setView={setView} />
 }
@@ -78,6 +83,8 @@ function BackgroundDecorations() {
       canvas.height = window.innerHeight;
     };
     window.addEventListener('resize', resize); resize();
+    // Also handle mobile address bar show/hide
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
     // We only use 6 blocks to avoid crowding on mobile screens
     const tetrisBlocks = Array.from({ length: 6 }).map((_, i) => ({
@@ -206,7 +213,7 @@ function BackgroundDecorations() {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKeyDown); };
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); window.removeEventListener('keydown', handleKeyDown); if (window.visualViewport) window.visualViewport.removeEventListener('resize', resize); };
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-60" />;
@@ -380,7 +387,7 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
       </div>
     )}
 
-    <div className="grid gap-5 grid-cols-2 md:grid-cols-5">
+    <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
       <Stat label="REGISTERED" value={stats.registeredCount} />
       <Stat label="CHECKED IN" value={stats.checkedInCount} />
       <Stat label="CAPACITY" value={stats.capacity} />
@@ -644,7 +651,7 @@ function OrganizerLogin({ onLogin, onBack }) {
     try {
       const res = await fetch(`${API_URL}/organizer/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clubName, password }) });
       const data = await res.json();
-      if (res.ok) { onLogin(data.token); } else { setError(data.error); }
+      if (res.ok) { onLogin(data.token, data.clubName); } else { setError(data.error); }
     } catch { setError("Login failed"); }
     setLoading(false);
   }
@@ -859,6 +866,19 @@ function Attendee({ onBack }) {
   useEffect(() => {
     if (!activeTicket && profile) {
       setFetchingEvents(true);
+
+      // Cross-device sync: fetch registrations from server and merge into localStorage
+      fetch(`${API_URL}/attendee/registrations/${profile.registrationId}`)
+        .then(r => r.json())
+        .then(serverTickets => {
+          if (serverTickets && typeof serverTickets === 'object') {
+            const localTickets = JSON.parse(localStorage.getItem(`my-tickets-${profile.registrationId}`) || '{}');
+            const merged = { ...localTickets, ...serverTickets };
+            localStorage.setItem(`my-tickets-${profile.registrationId}`, JSON.stringify(merged));
+            setTickets(merged);
+          }
+        }).catch(() => {});
+
       fetch(`${API_URL}/events`).then(r => r.json()).then(data => {
         setAvailableEvents(data);
         setFetchingEvents(false);
@@ -938,10 +958,10 @@ function Attendee({ onBack }) {
   if (!profile) {
     return <main className="min-h-screen bg-[#5cc7f2] px-4 py-8 font-pixel relative overflow-hidden">
       <PixelGame />
-      <div className="mx-auto max-w-xl relative z-10 pt-24">
+      <div className="mx-auto max-w-xl relative z-10 pt-20">
         <button onClick={onBack} className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 text-[10px] text-white font-bold bg-black/40 px-3 py-2 border-2 border-black shadow-[2px_2px_0_0_#000] hover:bg-black/60 transition-colors hover:-translate-y-0.5">← EXIT LEVEL</button>
         <header className="mb-8 text-center text-white drop-shadow-[3px_3px_0_#b6302f]">
-          <h1 className="text-xl leading-9 sm:text-3xl">ENTER PLAYER DETAILS</h1>
+          <h1 className="text-xl leading-9 sm:text-3xl">ENTER YOUR DETAILS</h1>
         </header>
         <form onSubmit={saveProfile} className={`${panel} text-black min-h-[350px] flex flex-col justify-center`}>
           {profileError && <div className="bg-[#e7513b] text-white p-3 text-[10px] text-center border-2 border-black mb-4">{profileError}</div>}
@@ -964,16 +984,14 @@ function Attendee({ onBack }) {
       <PixelGame />
       <div className="mx-auto max-w-xl relative z-10 pt-24">
 
-        {/* STUDENT PROFILE HEADER */}
-        {!viewingEvent && (
-          <div className="mb-6 flex items-center justify-between bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#000]">
-            <div>
-              <p className="text-[9px] text-slate-500 font-bold">LOGGED IN AS</p>
-              <p className="text-xs text-black font-bold uppercase">{profile.name} <span className="text-slate-400">({profile.registrationId})</span></p>
-            </div>
-            <button onClick={() => { setProfile(null); localStorage.removeItem('my-profile'); setActiveTicket(null); }} className="text-[9px] bg-[#e7513b] text-white px-2 py-1 border-2 border-black hover:bg-red-500 active:translate-y-1">LOGOUT</button>
+        {/* STUDENT PROFILE HEADER — always visible */}
+        <div className="mb-5 flex items-center justify-between bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#000]">
+          <div>
+            <p className="text-[9px] text-slate-500 font-bold">LOGGED IN AS</p>
+            <p className="text-xs text-black font-bold uppercase">{profile.name} <span className="text-slate-400">({profile.registrationId})</span></p>
           </div>
-        )}
+          <button onClick={() => { setProfile(null); localStorage.removeItem('my-profile'); setActiveTicket(null); }} className="text-[9px] bg-[#e7513b] text-white px-2 py-1 border-2 border-black hover:bg-red-500 active:translate-y-1">LOGOUT</button>
+        </div>
 
         {viewingEvent && (
           <button onClick={() => setViewingEvent(null)} className="mb-8 text-[9px] text-white underline">
@@ -999,9 +1017,9 @@ function Attendee({ onBack }) {
                 </div>
               )}
               <div className="flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-4 gap-2">
+                <div className="flex flex-wrap justify-between items-start mb-4 gap-2">
                   <h2 className="text-lg font-bold text-black break-words leading-6">{viewingEvent.name.toUpperCase()}</h2>
-                  <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${viewingEvent.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{viewingEvent.entry_fee ? viewingEvent.entry_fee.toUpperCase() : 'FREE'}</span>
+                  <span className={`text-[10px] px-2 py-1 font-bold ${viewingEvent.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{viewingEvent.entry_fee ? viewingEvent.entry_fee.toUpperCase() : 'FREE'}</span>
                 </div>
                 <div className="text-[10px] text-slate-700 space-y-3 font-semibold flex-1">
                   <p>📅 {viewingEvent.date} {viewingEvent.end_date ? `TO ${viewingEvent.end_date}` : ''}</p>
@@ -1027,9 +1045,9 @@ function Attendee({ onBack }) {
             {errorMsg && <div className="bg-[#e7513b] text-white p-3 text-[10px] text-center border-2 border-black">{errorMsg}</div>}
             {availableEvents.map(ev => (
               <button disabled={loading} key={ev.id} onClick={() => tickets[ev.id] ? setActiveTicket(tickets[ev.id]) : setViewingEvent(ev)} className="w-full border-4 border-black bg-white text-left shadow-[6px_6px_0_0_#000] hover:bg-slate-50 transition active:translate-y-1 active:shadow-none overflow-hidden flex flex-col p-4">
-                <div className="flex justify-between items-start mb-3 gap-2">
+                <div className="flex flex-wrap justify-between items-start mb-3 gap-2">
                   <p className="text-sm font-bold text-black break-words leading-5">{ev.name.toUpperCase()}</p>
-                  <span className={`text-[10px] px-2 py-1 font-bold shrink-0 ${ev.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{ev.entry_fee ? ev.entry_fee.toUpperCase() : 'FREE'}</span>
+                  <span className={`text-[10px] px-2 py-1 font-bold ${ev.entry_fee === 'Free' ? 'bg-[#54a946] text-white' : 'bg-[#f7c948] text-black'} border-2 border-black`}>{ev.entry_fee ? ev.entry_fee.toUpperCase() : 'FREE'}</span>
                 </div>
                 <div className="text-[10px] text-slate-700 space-y-2 mb-5 font-semibold">
                   <p>📅 {ev.date} {ev.end_date ? `TO ${ev.end_date}` : ''}</p>
@@ -1075,8 +1093,15 @@ function Attendee({ onBack }) {
 
   return <main className="min-h-screen bg-[#5cc7f2] px-4 py-8 font-pixel relative overflow-hidden">
     <PixelGame />
-    <div className="mx-auto max-w-xl relative z-10">
-      <button onClick={() => setActiveTicket(null)} className="mb-8 text-[9px] text-white underline">← BACK TO QUESTS</button>
+    <div className="mx-auto max-w-xl relative z-10 pt-14">
+      {/* STUDENT PROFILE HEADER — always visible */}
+      <div className="mb-5 flex items-center justify-between bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#000]">
+        <div>
+          <p className="text-[9px] text-slate-500 font-bold">LOGGED IN AS</p>
+          <p className="text-xs text-black font-bold uppercase">{profile.name} <span className="text-slate-400">({profile.registrationId})</span></p>
+        </div>
+        <button onClick={() => setActiveTicket(null)} className="text-[9px] bg-black/40 text-white px-2 py-1 border-2 border-black hover:bg-black/60 active:translate-y-1">← BACK</button>
+      </div>
       <header className="mb-8 text-center text-white drop-shadow-[3px_3px_0_#b6302f]">
         <h1 className="text-xl leading-9 sm:text-3xl">MY POWER-UP</h1>
         <p className="mt-4 text-[9px] leading-5">TICKET ASSIGNED</p>
@@ -1145,16 +1170,23 @@ function Attendee({ onBack }) {
 
 function Page({ title, subtitle, onBack, children }) { return <main className="min-h-screen bg-[#5cc7f2] px-4 py-8 font-pixel"><div className="mx-auto max-w-5xl"><button onClick={onBack} className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 text-[10px] text-white font-bold bg-black/40 px-3 py-2 border-2 border-black shadow-[2px_2px_0_0_#000] hover:bg-black/60 transition-colors hover:-translate-y-0.5">← EXIT LEVEL</button><header className="mb-8 text-center text-white drop-shadow-[3px_3px_0_#b6302f] mt-12"><h1 className="text-xl leading-9 sm:text-3xl">{title}</h1><p className="mt-4 text-[9px] leading-5">{subtitle.toUpperCase()}</p></header>{children}</div></main> }
 
-function OrganizerPage({ title, subtitle, onBack, onLogout, children }) {
+function OrganizerPage({ title, subtitle, onBack, onLogout, clubName, children }) {
   return (
-    <main className="min-h-screen bg-gray-100 px-4 py-8 font-pixel text-gray-900">
+    <main className="min-h-screen bg-gray-100 px-4 py-6 font-pixel text-gray-900">
       <div className="mx-auto max-w-5xl">
-        <div className="flex justify-between items-center mb-8">
-          <button onClick={onBack} className="text-[10px] text-gray-500 hover:text-gray-800 underline transition-colors">← EXIT DASHBOARD</button>
-          {onLogout && <button onClick={onLogout} className="text-[10px] text-red-500 hover:text-red-700 underline transition-colors">LOGOUT</button>}
+        <div className="flex justify-between items-center mb-6 gap-2">
+          <button onClick={onBack} className="text-[10px] text-gray-500 hover:text-gray-800 underline transition-colors shrink-0">← EXIT DASHBOARD</button>
+          <div className="flex items-center gap-3">
+            {clubName && (
+              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-300 px-3 py-1 rounded-full tracking-wider">
+                ⚙ {clubName.toUpperCase()}
+              </span>
+            )}
+            {onLogout && <button onClick={onLogout} className="text-[10px] text-red-500 hover:text-red-700 underline transition-colors shrink-0">LOGOUT</button>}
+          </div>
         </div>
-        <header className="mb-10 border-b-2 border-gray-300 pb-5">
-          <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">{title}</h1>
+        <header className="mb-8 border-b-2 border-gray-300 pb-4">
+          <h1 className="text-xl sm:text-3xl font-medium text-gray-900 break-words">{title}</h1>
           <p className="mt-2 text-[10px] text-teal-600 font-semibold tracking-widest">{subtitle.toUpperCase()}</p>
         </header>
         {children}
