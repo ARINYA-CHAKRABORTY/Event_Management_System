@@ -59,8 +59,8 @@ function App() {
     setView('home');
   }
 
-  if (view === 'create') return <CreateEvent setEvent={(e) => { setEvent(e); setView('dashboard'); }} onBack={() => setView('organizer')} orgToken={orgToken} />
-  if (view === 'edit') return <CreateEvent existingEvent={event} setEvent={(e) => { setEvent(e); setView('dashboard'); }} onBack={() => setView('dashboard')} orgToken={orgToken} />
+  if (view === 'create') return <CreateEvent setEvent={(e) => { setEvent(e); setView('dashboard'); }} onBack={() => setView('organizer')} orgToken={orgToken} clubName={clubName} />
+  if (view === 'edit') return <CreateEvent existingEvent={event} setEvent={(e) => { setEvent(e); setView('dashboard'); }} onBack={() => setView('dashboard')} orgToken={orgToken} clubName={clubName} />
   if (view === 'organizer') {
     if (!orgToken) return <OrganizerLogin onLogin={handleOrgAuth} onBack={() => setView('home')} />
     return <EventList onSelect={(e) => { setEvent(e); setView('dashboard'); }} onCreate={() => setView('create')} onLogout={handleOrgLogout} onBack={() => setView('home')} orgToken={orgToken} clubName={clubName} />
@@ -242,7 +242,7 @@ function Home({ setView }) {
   </main>
 }
 
-function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
+function EventList({ onSelect, onCreate, onLogout, onBack, orgToken, clubName }) {
   const [events, setEvents] = useState([]);
 
   const fetchEvents = () => {
@@ -262,7 +262,7 @@ function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
     return () => socket.disconnect();
   }, [orgToken]);
 
-  return <OrganizerPage title="YOUR EVENTS" subtitle="SELECT AN EVENT TO MANAGE" onBack={onBack} onLogout={onLogout}>
+  return <OrganizerPage title="YOUR EVENTS" subtitle="SELECT AN EVENT TO MANAGE" onBack={onBack} onLogout={onLogout} clubName={clubName}>
     <button className={`${orgButton} w-full mb-6 bg-indigo-600 hover:bg-indigo-500`} onClick={onCreate}>+ CREATE NEW EVENT</button>
     <div className="grid gap-4 md:grid-cols-2">
       {events.map(ev => (
@@ -276,7 +276,7 @@ function EventList({ onSelect, onCreate, onLogout, onBack, orgToken }) {
   </OrganizerPage>
 }
 
-function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLogout }) {
+function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLogout, clubName }) {
   const [stats, setStats] = useState({ capacity: event?.capacity || 0, registeredCount: 0, checkedInCount: 0 })
   const [attendeesList, setAttendeesList] = useState([])
   const [aiQuery, setAiQuery] = useState('')
@@ -362,9 +362,9 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
     setAiLoading(false);
   };
 
-  if (!event) return <OrganizerPage title="NO EVENT ACTIVE" subtitle="CREATE ONE FIRST" onBack={onBack} onLogout={onLogout}><button className={`${orgButton} w-full`} onClick={onCreate}>CREATE EVENT</button></OrganizerPage>
+  if (!event) return <OrganizerPage title="NO EVENT ACTIVE" subtitle="CREATE ONE FIRST" onBack={onBack} onLogout={onLogout} clubName={clubName}><button className={`${orgButton} w-full`} onClick={onCreate}>CREATE EVENT</button></OrganizerPage>
 
-  return <OrganizerPage title="EVENT DASHBOARD" subtitle="REAL-TIME MANAGEMENT" onBack={onBack} onLogout={onLogout}>
+  return <OrganizerPage title="EVENT DASHBOARD" subtitle="REAL-TIME MANAGEMENT" onBack={onBack} onLogout={onLogout} clubName={clubName}>
     {showTerminateModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div className={`${orgPanel} max-w-sm w-full shadow-2xl`}>
@@ -473,7 +473,7 @@ function Dashboard({ event, onBack, onCreate, onEdit, onScanner, orgToken, onLog
 
 function Stat({ label, value }) { return <div className={`${orgPanel} text-center`}><p className="text-3xl text-gray-900 font-medium">{value}</p><p className="mt-2 text-[9px] text-gray-500 font-semibold">{label}</p></div> }
 
-function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
+function CreateEvent({ setEvent, onBack, orgToken, existingEvent, clubName }) {
   const [form, setForm] = useState({
     name: existingEvent?.name || '',
     date: existingEvent?.date || '',
@@ -519,7 +519,8 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
     setForm({ ...form, price_tiers: tiers });
   };
 
-  const odInvalid = form.od_start && form.od_end && form.od_end <= form.od_start;
+  const isMultiDay = form.date && form.end_date && form.date !== form.end_date;
+  const odInvalid = !isMultiDay && form.od_start && form.od_end && form.od_end <= form.od_start;
 
   const save = async (e) => {
     e.preventDefault();
@@ -556,7 +557,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
     setLoading(false);
   };
 
-  return <OrganizerPage title={existingEvent ? "EDIT EVENT" : "NEW EVENT SETUP"} subtitle={existingEvent ? "UPDATE PARAMETERS" : "DEFINE PARAMETERS"} onBack={onBack}>
+  return <OrganizerPage title={existingEvent ? "EDIT EVENT" : "NEW EVENT SETUP"} subtitle={existingEvent ? "UPDATE PARAMETERS" : "DEFINE PARAMETERS"} onBack={onBack} clubName={clubName}>
     <form onSubmit={save} className={`${orgPanel} mx-auto max-w-xl space-y-5`}>
       <Field label="EVENT NAME" value={form.name} onChange={(name) => setForm({ ...form, name })} />
 
@@ -577,8 +578,8 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
       {dateError && <p className="text-red-400 text-[10px] -mt-3 bg-red-500/10 p-2 rounded border border-red-500/20">{dateError}</p>}
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="DURATION (HOURS)" type="number" value={form.duration_hours} onChange={(duration_hours) => setForm({ ...form, duration_hours })} optional />
-        <Field label="STRICT CAPACITY LIMIT" type="number" value={form.capacity} onChange={(capacity) => setForm({ ...form, capacity })} />
+        <Field label="DURATION (HOURS)" type="number" min="0" value={form.duration_hours} onChange={(duration_hours) => setForm({ ...form, duration_hours })} optional />
+        <Field label="TOTAL NO OF SEATS" type="number" min="1" value={form.capacity} onChange={(capacity) => setForm({ ...form, capacity })} />
       </div>
 
       <div>
@@ -588,7 +589,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
             <input type="time" value={form.od_start} onChange={(e) => setForm({ ...form, od_start: e.target.value })} className={orgInput} />
           </label>
           <label className="block text-[10px] text-slate-500">TO
-            <input type="time" value={form.od_end} min={form.od_start || undefined}
+            <input type="time" value={form.od_end} min={isMultiDay ? undefined : form.od_start}
               onChange={(e) => setForm({ ...form, od_end: e.target.value })} className={orgInput} />
           </label>
         </div>
@@ -637,7 +638,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent }) {
     </form>
   </OrganizerPage>
 }
-function Field({ label, value, onChange, type = 'text', optional = false }) { return <label className="block text-[10px] text-slate-400 font-semibold">{label}<input required={!optional} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={orgInput} /></label> }
+function Field({ label, value, onChange, type = 'text', optional = false, min }) { return <label className="block text-[10px] text-slate-400 font-semibold">{label}<input required={!optional} type={type} min={min} value={value} onChange={(e) => onChange(e.target.value)} className={orgInput} /></label> }
 
 function OrganizerLogin({ onLogin, onBack }) {
   const [clubName, setClubName] = useState('');
@@ -670,8 +671,16 @@ function OrganizerLogin({ onLogin, onBack }) {
   </OrganizerPage>
 }
 
-function Scanner({ event, onBack, orgToken }) {
+function Scanner({ event, onBack, orgToken, clubName }) {
   const [code, setCode] = useState(''); const [result, setResult] = useState(null); const [cameraStatus, setCameraStatus] = useState('PRESS START CAMERA'); const video = useRef(null); const stream = useRef(null); const timer = useRef(null)
+
+  // Auto-clear scan popup after 2.5 seconds
+  useEffect(() => {
+    if (result) {
+      const t = setTimeout(() => setResult(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [result]);
 
   // Offline queue sync logic
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -798,7 +807,7 @@ function Scanner({ event, onBack, orgToken }) {
   useEffect(() => () => { clearTimeout(timer.current); stream.current?.getTracks().forEach((track) => track.stop()) }, [])
   const submit = (e) => { e.preventDefault(); submitCode(code) }
 
-  return <OrganizerPage title="QR SCANNER" subtitle={event?.name || 'NO EVENT'} onBack={onBack}>
+  return <OrganizerPage title="QR SCANNER" subtitle={event?.name || 'NO EVENT'} onBack={onBack} clubName={clubName}>
     <div className="mx-auto max-w-lg">
       <div className={`mb-4 p-2 text-center text-[10px] font-semibold text-white rounded-sm ${isOnline ? 'bg-green-600' : 'bg-red-500'}`}>
         {isOnline ? 'NETWORK: ONLINE' : `NETWORK: OFFLINE (${queueCount} PENDING SYNC)`}
@@ -809,6 +818,22 @@ function Scanner({ event, onBack, orgToken }) {
           <div className="absolute left-0 right-0 h-1 bg-blue-400 shadow-[0_0_12px_#60a5fa] animate-[scan-line_2s_ease-in-out_infinite]" />
         </div>
         <span className="absolute left-6 top-6 text-[10px] text-white font-semibold tracking-wider">VIEWFINDER</span>
+        
+        {/* SCAN RESULT POPUP OVERLAY */}
+        {result && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm transition-all duration-200">
+            <div className={`w-full p-6 text-center text-sm font-bold uppercase rounded-xl shadow-2xl border-4 transform transition-transform ${
+              result.ok ? 'bg-green-500 text-white border-green-200 scale-105' 
+              : (result.message.toUpperCase().includes('ALREADY') ? 'bg-orange-500 text-white border-orange-200 scale-100' 
+              : 'bg-red-600 text-white border-red-200 scale-100')
+            }`}>
+              <div className="text-4xl mb-3 drop-shadow-md">
+                {result.ok ? '✅' : (result.message.toUpperCase().includes('ALREADY') ? '⚠️' : '❌')}
+              </div>
+              <span className="drop-shadow-md">{result.message}</span>
+            </div>
+          </div>
+        )}
       </div>
       <button className={`${orgButton} mt-5 w-full bg-blue-600 hover:bg-blue-700`} onClick={startCamera}>START CAMERA</button>
       <p className="mt-4 text-center text-[10px] text-slate-500">{cameraStatus}</p>
@@ -820,15 +845,6 @@ function Scanner({ event, onBack, orgToken }) {
           <button className={orgButton}>SUBMIT</button>
         </form>
       </div>
-
-      {result && (
-        <div className={`mt-5 p-4 text-center text-xs font-bold uppercase rounded-md shadow-sm border ${result.ok ? 'bg-green-50 text-green-700 border-green-200'
-            : (result.message === 'Already checked in' || result.message.includes('Already')) ? 'bg-orange-50 text-orange-700 border-orange-200'
-              : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
-          {result.message}
-        </div>
-      )}
     </div>
   </OrganizerPage>
 }
@@ -867,15 +883,13 @@ function Attendee({ onBack }) {
     if (!activeTicket && profile) {
       setFetchingEvents(true);
 
-      // Cross-device sync: fetch registrations from server and merge into localStorage
+      // Cross-device sync: fetch registrations from server and keep localStorage strictly in sync
       fetch(`${API_URL}/attendee/registrations/${profile.registrationId}`)
         .then(r => r.json())
         .then(serverTickets => {
           if (serverTickets && typeof serverTickets === 'object') {
-            const localTickets = JSON.parse(localStorage.getItem(`my-tickets-${profile.registrationId}`) || '{}');
-            const merged = { ...localTickets, ...serverTickets };
-            localStorage.setItem(`my-tickets-${profile.registrationId}`, JSON.stringify(merged));
-            setTickets(merged);
+            localStorage.setItem(`my-tickets-${profile.registrationId}`, JSON.stringify(serverTickets));
+            setTickets(serverTickets);
           }
         }).catch(() => {});
 
@@ -895,7 +909,22 @@ function Attendee({ onBack }) {
     try {
       const res = await fetch(`${API_URL}/attendee/${id}/token`);
       const data = await res.json();
-      if (res.ok) { setToken(data.token); setTimeLeft(15); setIsCheckedIn(data.checkedIn); }
+      if (res.ok) { 
+        setToken(data.token); 
+        setTimeLeft(15); 
+        setIsCheckedIn(data.checkedIn); 
+      } else if (res.status === 404) {
+        // Ticket is no longer valid (e.g. database was wiped)
+        alert('This ticket is no longer valid or the event data was reset.');
+        setActiveTicket(null);
+        setTickets(prev => {
+          const updated = { ...prev };
+          const eventId = Object.keys(updated).find(k => updated[k] === id);
+          if (eventId) delete updated[eventId];
+          localStorage.setItem(`my-tickets-${profile.registrationId}`, JSON.stringify(updated));
+          return updated;
+        });
+      }
     } catch (err) { }
   };
 

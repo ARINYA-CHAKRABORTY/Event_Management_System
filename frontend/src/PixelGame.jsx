@@ -166,11 +166,10 @@ export default function PixelGame() {
           }
           else {
               game.gameOver = true;
-              playSound('gameover');
           }
         }
       }
-      if (p.y > canvas.height + 80) { if (!game.gameOver) { game.gameOver = true; playSound('gameover'); } }
+      if (p.y > canvas.height + 80) { game.gameOver = true; }
       game.cameraX = Math.max(game.cameraX, p.x - canvas.width / 2 + p.w / 2);
       if (p.x < game.cameraX) { p.x = game.cameraX; if (p.vx < 0) p.vx = 0; }
       makeWorld(game.cameraX + canvas.width * 2)
