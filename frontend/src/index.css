@@ -1,0 +1,32 @@
+/*
+ * Defines the shared pixel font, page baseline, and small animations for the Event Check-In System.
+ * Layout and component styling remain in Tailwind classes inside the React interface.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-pixel: "Press Start 2P", monospace;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: #5cc7f2; color: #111827; }
+button, input, select { font: inherit; }
+
+.font-pixel { font-family: 'Press Start 2P', monospace !important; }
+
+@keyframes coin-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes scan-line {
+  0% { top: 8%; }
+  50% { top: 88%; }
+  100% { top: 8%; }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
