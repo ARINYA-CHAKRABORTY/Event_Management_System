@@ -13,8 +13,8 @@ import { io } from 'socket.io-client'
 import jsQR from 'jsqr'
 import PixelGame from './PixelGame'
 
-const API_URL = 'https://event-management-system-k2xm.onrender.com/api';
-const WS_URL = 'https://event-management-system-k2xm.onrender.com/';
+const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3002/api' : 'https://event-management-system-k2xm.onrender.com/api';
+const WS_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3002/' : 'https://event-management-system-k2xm.onrender.com/';
 
 
 const pixelButton = 'border-4 border-black bg-[#f7c948] px-4 py-3 font-pixel text-[10px] leading-5 text-black shadow-[4px_4px_0_0_#000] transition active:translate-x-1 active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-50'
@@ -497,7 +497,38 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent, clubName }) {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => setForm({ ...form, image_url: e.target.result });
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1000;
+          const MAX_HEIGHT = 1000;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG with 0.7 quality to reduce base64 string size dramatically
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setForm(prev => ({ ...prev, image_url: compressedBase64 }));
+        };
+        img.src = event.target.result;
+      };
       reader.readAsDataURL(file);
     }
   }
@@ -632,7 +663,7 @@ function CreateEvent({ setEvent, onBack, orgToken, existingEvent, clubName }) {
       <label className="block text-[10px] text-slate-400 font-semibold">EVENT BANNER IMAGE
         <input type="file" accept="image/*" onChange={handleImage} className={`${orgInput} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700`} />
       </label>
-      {form.image_url && <img src={form.image_url} alt="Preview" className="w-full h-32 object-cover rounded-md border border-slate-700" />}
+      {form.image_url && <img src={form.image_url} alt="Preview" className="w-full h-auto max-h-64 object-contain rounded-md border border-slate-700 bg-gray-50" />}
 
       <button disabled={loading || !!dateError || !!odInvalid} className={`${orgButton} mt-3 w-full`}>{loading ? 'SAVING...' : (existingEvent ? 'SAVE CHANGES' : 'CREATE EVENT')}</button>
     </form>
