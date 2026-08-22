@@ -688,6 +688,16 @@ function Scanner({ event, onBack, orgToken, clubName }) {
   const getQueue = () => JSON.parse(localStorage.getItem('offlineQueue') || '[]');
   const setQueue = (q) => { localStorage.setItem('offlineQueue', JSON.stringify(q)); setQueueCount(q.length); };
 
+  // Camera Switcher state
+  const [devices, setDevices] = useState([]);
+  const [deviceIndex, setDeviceIndex] = useState(0);
+
+  useEffect(() => {
+    if (navigator.mediaDevices?.enumerateDevices) {
+      navigator.mediaDevices.enumerateDevices().then(devs => setDevices(devs.filter(d => d.kind === 'videoinput')));
+    }
+  }, []);
+
   // Register this device as an active scanner
   useEffect(() => {
     if (!event?.id) return;
@@ -727,7 +737,7 @@ function Scanner({ event, onBack, orgToken, clubName }) {
     lastScanned.current[value] = now;
     setCode('');
 
-    const payload = { token: value, scannedAt: new Date().toISOString(), deviceId: localStorage.getItem('deviceId') };
+    const payload = { token: value, scannedAt: new Date().toISOString(), deviceId: localStorage.getItem('deviceId'), scannerEventId: event.id };
 
     // --- LOCAL JWT VALIDATION (Works Offline!) ---
     try {
@@ -736,6 +746,12 @@ function Scanner({ event, onBack, orgToken, clubName }) {
       const jwtPayload = JSON.parse(atob(parts[1]));
 
       const scanTime = new Date(payload.scannedAt).getTime() / 1000;
+      
+      if (Number(jwtPayload.eventId) !== Number(event.id)) {
+        setResult({ ok: false, message: 'WRONG EVENT TICKET' });
+        return;
+      }
+
       if (scanTime - jwtPayload.iat > 15) {
         setResult({ ok: false, message: 'EXPIRED QR CODE (Generated > 15s ago)' });
         return;
@@ -760,10 +776,18 @@ function Scanner({ event, onBack, orgToken, clubName }) {
     }
   }
 
-  const startCamera = async () => {
+  const startCamera = async (specificDeviceId = null) => {
     if (!navigator.mediaDevices?.getUserMedia) { setCameraStatus('CAMERA API UNSUPPORTED — USE MANUAL MODE'); return }
     try {
-      stream.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (stream.current) {
+        stream.current.getTracks().forEach(t => t.stop());
+      }
+      
+      const constraints = { video: { facingMode: 'environment' } };
+      const targetDeviceId = specificDeviceId || (devices.length > 0 ? devices[deviceIndex].deviceId : null);
+      if (targetDeviceId) constraints.video = { deviceId: { exact: targetDeviceId } };
+
+      stream.current = await navigator.mediaDevices.getUserMedia(constraints);
       video.current.srcObject = stream.current;
       await video.current.play();
       setCameraStatus('SCANNING FOR A QR TICKET...');
@@ -804,6 +828,15 @@ function Scanner({ event, onBack, orgToken, clubName }) {
       timer.current = setTimeout(scan, 100);
     } catch { setCameraStatus('CAMERA ACCESS DENIED — USE MANUAL MODE') }
   }
+
+  const handleSwitchCamera = () => {
+    if (devices.length > 1) {
+      const nextIndex = (deviceIndex + 1) % devices.length;
+      setDeviceIndex(nextIndex);
+      if (stream.current) startCamera(devices[nextIndex].deviceId);
+    }
+  };
+
   useEffect(() => () => { clearTimeout(timer.current); stream.current?.getTracks().forEach((track) => track.stop()) }, [])
   const submit = (e) => { e.preventDefault(); submitCode(code) }
 
@@ -835,7 +868,12 @@ function Scanner({ event, onBack, orgToken, clubName }) {
           </div>
         )}
       </div>
-      <button className={`${orgButton} mt-5 w-full bg-blue-600 hover:bg-blue-700`} onClick={startCamera}>START CAMERA</button>
+      <div className="flex gap-2 mt-5">
+        <button className={`${orgButton} w-full bg-blue-600 hover:bg-blue-700`} onClick={() => startCamera()}>START CAMERA</button>
+        {devices.length > 1 && (
+          <button className={`${orgButton} bg-slate-600 hover:bg-slate-700 px-4`} onClick={handleSwitchCamera}>🔄</button>
+        )}
+      </div>
       <p className="mt-4 text-center text-[10px] text-slate-500">{cameraStatus}</p>
 
       <div className="mt-8 border-t border-slate-200 pt-6">

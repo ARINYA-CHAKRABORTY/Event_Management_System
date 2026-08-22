@@ -334,7 +334,7 @@ const checkInTransaction = db.transaction((eventId, attendeeId, scannedAt, devic
 });
 
 app.post('/api/checkin', requireOrganizer, (req, res) => {
-  const { token, scannedAt, deviceId } = req.body;
+  const { token, scannedAt, deviceId, scannerEventId } = req.body;
   if (!token) return res.status(400).json({ error: 'Token is required' });
 
   try {
@@ -344,6 +344,11 @@ app.post('/api/checkin', requireOrganizer, (req, res) => {
     // 'scannedAt' time occurred while the token was actually fresh.
     const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
     const { attendeeId, eventId } = decoded;
+    
+    if (scannerEventId && Number(scannerEventId) !== Number(eventId)) {
+      return res.status(400).json({ error: 'Ticket is for a different event!' });
+    }
+
     const actualDeviceId = deviceId || 'UNKNOWN';
     const actualScannedAt = scannedAt || new Date().toISOString();
 
